@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Belot Score</title>
+<meta name="theme-color" content="#F2F2F2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; overscroll-behavior: none; }
+:root {
+  /* Layout: One UI split. Slim action bar, the scoresheet as a rounded card, a compact numpad within thumb reach. */
+  --bg: #F2F2F2;
+  --card: #FFFFFF;
+  --card-2: #F5F5F5;
+  --ink: #111111;
+  --muted: #8A8A8A;
+  --line: #EDEDED;
+  --divider: #D4D4D4;
+  --accent: #2B6FE6;
+  --on-accent: #FFFFFF;
+  --key: #FFFFFF;
+  --key-ink: #111111;
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000;
+    --card: #171717;
+    --card-2: #222222;
+    --ink: #FAFAFA;
+    --muted: #8F8F8F;
+    --line: #262626;
+    --divider: #3A3A3A;
+    --accent: #4C93FF;
+    --on-accent: #FFFFFF;
+    --key: #222222;
+    --key-ink: #FAFAFA;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #000000;
+  --card: #171717;
+  --card-2: #222222;
+  --ink: #FAFAFA;
+  --muted: #8F8F8F;
+  --line: #262626;
+  --divider: #3A3A3A;
+  --accent: #4C93FF;
+  --on-accent: #FFFFFF;
+  --key: #222222;
+  --key-ink: #FAFAFA;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font);
+  padding-block: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-tap-highlight-color: transparent;
+}
+.app { height: 100%; max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; min-height: 0; }
+.view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+button { font: inherit; color: inherit; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* action bar */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 56px; padding: 0 2px; }
+.tt { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.tt h1 { margin: 0; font: 600 20px/1.2 var(--font); }
+.acts { display: flex; gap: 2px; margin-left: auto; }
+.ib {
+  width: 42px; height: 42px; border: 0; border-radius: 21px; background: transparent; color: var(--ink);
+  display: grid; place-items: center; cursor: pointer; padding: 0;
+}
+.ib svg { width: 22px; height: 22px; }
+.ib:active { background: var(--card-2); }
+.ib:disabled { opacity: .3; cursor: default; background: transparent; }
+.ib[aria-pressed="true"] { background: var(--card); color: var(--accent); }
+.ib.armed { width: auto; padding: 0 14px; background: var(--accent); color: var(--on-accent); font: 600 14px var(--font); }
+.ib.back { margin-left: -6px; }
+
+/* scoresheet card */
+.sheet { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--card); border-radius: 26px; overflow: hidden; }
+.names { display: grid; grid-template-columns: 1fr 1fr; position: relative; border-bottom: 1px solid var(--line); }
+.names > div { height: 44px; display: grid; place-items: center; font: 600 14px/1 var(--font); color: var(--muted); letter-spacing: .02em; }
+.names::after, .r::after {
+  content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; margin-left: -.5px; background: var(--divider); pointer-events: none;
+}
+.names::after { top: 10px; }
+.list {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  background-image: linear-gradient(var(--divider), var(--divider)); background-repeat: no-repeat;
+  background-size: 1px 100%; background-position: center top; background-attachment: local;
+}
+.r { height: 46px; display: grid; grid-template-columns: 1fr 1fr; align-items: center; position: relative; }
+.r + .r { box-shadow: inset 0 1px 0 var(--line); }
+.r > * { min-width: 0; }
+.cp {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 1;
+  font: 700 11px/1 var(--font); color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 13%, transparent); border-radius: 6px; padding: 4px 6px;
+}
+.c {
+  height: 46px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; gap: 7px;
+  font: 500 19px/1 var(--font); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink);
+}
+.c .p, .c .d { color: var(--muted); font-weight: 400; }
+.c .x { font-weight: 600; }
+button.c.act { height: 36px; margin: 0 12px; border-radius: 18px; background: var(--card-2); cursor: pointer; border: 1.5px solid transparent; }
+button.c.act.on { background: color-mix(in srgb, var(--accent) 10%, var(--card)); border-color: var(--accent); }
+.c .n { min-width: 1.1ch; text-align: left; }
+.c.on .n::after { content: ""; display: inline-block; width: 2px; height: .9em; margin-left: 2px; background: var(--accent); vertical-align: -.12em; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .c.on .n::after { animation: none; } }
+
+.w { background: var(--card-2); }
+.w .c { font-size: 19px; font-weight: 700; color: var(--accent); }
+.f .c { font-weight: 700; }
+.f { background: var(--card-2); }
+
+/* bottom: switch row, keypad, dialog */
+.bottom { padding: 10px 0 12px; display: flex; flex-direction: column; gap: 10px; }
+.swrow {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+  background: var(--card); border: 0; border-radius: 22px; padding: 12px 18px; text-align: left; cursor: pointer;
+}
+.swrow .lt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.swrow .lt b { font: 500 16px/1.25 var(--font); }
+.swrow .lt small { font: 400 13px/1.3 var(--font); color: var(--muted); }
+.sw { flex: none; width: 46px; height: 26px; border-radius: 13px; background: var(--divider); position: relative; transition: background .15s; }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .15s; }
+.swrow[aria-pressed="true"] .sw { background: var(--accent); }
+.swrow[aria-pressed="true"] .sw::after { transform: translateX(20px); }
+@media (prefers-reduced-motion: reduce) { .sw, .sw::after { transition: none; } }
+
+.pad { display: grid; grid-template-columns: repeat(3, 1fr) 1.1fr; grid-template-rows: repeat(4, 48px); gap: 8px; }
+.k {
+  border: 0; border-radius: 24px; background: var(--key); color: var(--key-ink); cursor: pointer;
+  font: 500 22px/1 var(--font); display: grid; place-items: center;
+}
+.k:active { filter: brightness(.9); }
+.k svg { width: 22px; height: 22px; }
+.k.zero { grid-column: 1 / span 3; }
+.k.bs { grid-column: 4; grid-row: 1; }
+.k.enter { grid-column: 4; grid-row: 2 / span 3; background: var(--accent); color: var(--on-accent); }
+.k.enter svg { width: 28px; height: 28px; }
+.k.enter .ic-save { display: none; }
+.k.enter.save .ic-save { display: block; }
+.k.enter.save .ic-next { display: none; }
+
+.dlg { background: var(--card); border-radius: 26px; padding: 22px 20px 6px; display: flex; flex-direction: column; gap: 6px; }
+.dlg h2 { margin: 0; font: 600 19px/1.25 var(--font); }
+.dlg .s { font: 600 30px/1.2 var(--font); font-variant-numeric: tabular-nums; color: var(--muted); margin-top: 4px; }
+.dlg .s b { color: var(--ink); font-weight: 700; }
+.dlg p { margin: 0; font: 400 14px/1.4 var(--font); color: var(--muted); }
+.dlg .btns { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-top: 8px; }
+.dlg .btns i { width: 1px; height: 20px; background: var(--divider); }
+.dlg .btns button { min-height: 52px; border: 0; background: transparent; color: var(--accent); font: 600 17px var(--font); cursor: pointer; border-radius: 16px; }
+.dlg .btns button:active { background: var(--card-2); }
+
+/* info and history */
+.page { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 24px; display: flex; flex-direction: column; gap: 10px; }
+.grp { margin: 12px 18px 0; font: 600 13px/1.2 var(--font); color: var(--accent); }
+.cardlist { background: var(--card); border-radius: 26px; padding: 4px 0; }
+.li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 10px 20px; position: relative; }
+.li + .li::before { content: ""; position: absolute; top: 0; left: 20px; right: 20px; height: 1px; background: var(--line); }
+.li .t { font: 500 16px/1.3 var(--font); min-width: 0; }
+.li .t small { display: block; font: 400 13.5px/1.4 var(--font); color: var(--muted); margin-top: 2px; }
+.li .v { font: 600 18px/1 var(--font); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+.li .v b { color: var(--ink); font-weight: 700; }
+.li.rule { display: block; }
+.empty { padding: 22px 20px; color: var(--muted); font: 400 15px/1.45 var(--font); }
+.txtbtn {
+  align-self: center; min-height: 48px; padding: 0 22px; border: 0; border-radius: 24px; background: var(--card);
+  color: var(--accent); font: 600 15px var(--font); cursor: pointer; margin-top: 4px;
+}
+.txtbtn.armed { background: var(--accent); color: var(--on-accent); }
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="top">
+    <div class="tt" id="tt" hidden>
+      <button id="back" class="ib back" type="button" aria-label="Назад">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <h1 id="ttl"></h1>
+    </div>
+    <div class="acts">
+      <button id="undo" class="ib" type="button" aria-label="Отмени последното">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+      </button>
+      <button id="btnHist" class="ib" type="button" aria-pressed="false" aria-label="История">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+      </button>
+      <button id="btnInfo" class="ib" type="button" aria-pressed="false" aria-label="Инфо">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.01"/></svg>
+      </button>
+      <button id="reset" class="ib" type="button" aria-label="Нулирай играта">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 12.5h9l1-12.5"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <section id="gameView" class="view">
+    <div class="sheet">
+      <div class="names"><div>Ние</div><div>Вие</div></div>
+      <div id="list" class="list"></div>
+    </div>
+
+    <div class="bottom">
+      <div id="ask" class="dlg" hidden>
+        <h2>Стигнато е 151</h2>
+        <div id="askScore" class="s"></div>
+        <p>Ако последната ръка е капо, играта продължава с този резултат.</p>
+        <div class="btns">
+          <button id="askCap" type="button">Капо</button><i aria-hidden="true"></i><button id="askNew" type="button">Нова игра</button>
+        </div>
+      </div>
+
+      <button id="cap" class="swrow" type="button" aria-pressed="false" hidden>
+        <span class="lt"><b>Тази ръка е капо</b><small>След капо следващата ръка решава играта</small></span>
+        <span class="sw" aria-hidden="true"></span>
+      </button>
+
+      <div id="pad" class="pad">
+        <button class="k bs" type="button" data-k="bs" aria-label="Изтрий цифра">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5h10a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 19 19H9l-6-7z"/><path d="M12 9.5l5 5M17 9.5l-5 5"/></svg>
+        </button>
+        <button id="ent" class="k enter" type="button" data-k="ent" aria-label="Към Вие">
+          <svg class="ic-next" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <svg class="ic-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+        </button>
+        <button class="k" type="button" data-k="1">1</button>
+        <button class="k" type="button" data-k="2">2</button>
+        <button class="k" type="button" data-k="3">3</button>
+        <button class="k" type="button" data-k="4">4</button>
+        <button class="k" type="button" data-k="5">5</button>
+        <button class="k" type="button" data-k="6">6</button>
+        <button class="k" type="button" data-k="7">7</button>
+        <button class="k" type="button" data-k="8">8</button>
+        <button class="k" type="button" data-k="9">9</button>
+        <button class="k zero" type="button" data-k="0">0</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="infoView" class="page" hidden>
+    <div class="grp">Общо точки в една игра</div>
+    <div class="cardlist">
+      <div class="li"><span class="t">С коз</span><span class="v"><b>162</b></span></div>
+      <div class="li"><span class="t">Без коз</span><span class="v"><b>260</b></span></div>
+      <div class="li"><span class="t">Всичко коз</span><span class="v"><b>258</b></span></div>
+    </div>
+    <div class="grp">Закръгляне</div>
+    <div class="cardlist">
+      <div class="li rule"><span class="t">С коз<small>Резултат с цифра 6 накрая: отборът с по-малко точки закръгля нагоре (56 и 106 стават 6 и 10).</small></span></div>
+      <div class="li rule"><span class="t">Всичко коз<small>Цифра 4 накрая: отборът с по-малко точки закръгля нагоре.</small></span></div>
+      <div class="li rule"><span class="t">Без коз<small>Първо се удвоява, после се закръгля.</small></span></div>
+    </div>
+    <div class="grp">Правила</div>
+    <div class="cardlist">
+      <div class="li rule"><span class="t">Контра ×2, реконтра ×4<small>Печелившият записва двойно или четворно, анонсите и капото също.</small></span></div>
+      <div class="li rule"><span class="t">Висяща<small>При равни точки те висят за печелившия на следващата ръка и се закръгляват нагоре.</small></span></div>
+      <div class="li rule"><span class="t">Край на играта<small>151 точки. При равни се играе още.</small></span></div>
+      <div class="li rule"><span class="t">С капо не се излиза<small>Когато някой стигне 151, избери „Капо“ и играта продължава. Следващата ръка я решава, ако отборът над 151 запише точки и ръката не е капо. Печели този с повече общо точки.</small></span></div>
+    </div>
+  </section>
+
+  <section id="histView" class="page" hidden>
+    <div class="cardlist" id="histCard">
+      <div id="histList"></div>
+      <div id="histEmpty" class="empty">Още няма приключили игри. Записват се, когато играта приключи.</div>
+    </div>
+    <button id="histClear" class="txtbtn" type="button">Изчисти историята</button>
+  </section>
+</main>
+<script>
+(function () {
+  'use strict';
+  var KEY = 'belote-notepad-v2';
+  var TARGET = 151;
+  var S = { log: [], history: [] };
+  try {
+    var j = JSON.parse(localStorage.getItem(KEY));
+    if (j && Array.isArray(j.log)) { S.log = j.log; S.history = Array.isArray(j.history) ? j.history : []; }
+  } catch (e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  var cur = { A: '', B: '' }, foc = 'A', capot = false, view = 'game';
+  function $(id) { return document.getElementById(id); }
+  function num(v) { var n = parseInt(v, 10); return isNaN(n) ? 0 : n; }
+  function show(v) { return v === '' ? ' ' : v; }
+  function p2(n) { return n < 10 ? '0' + n : '' + n; }
+  function fmt(ts) {
+    var d = new Date(ts);
+    try {
+      return d.toLocaleString('bg-BG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+    } catch (e) {
+      return p2(d.getDate()) + '.' + p2(d.getMonth() + 1) + '.' + d.getFullYear() + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+    }
+  }
+  var CP = '<span class="cp" title="Капо">К</span>';
+
+  /* Totals of the game in progress, wins so far, and whether it was resumed after a capot. */
+  function game() {
+    var a = 0, b = 0, resumed = null, wins = { A: 0, B: 0 };
+    S.log.forEach(function (it) {
+      if (it.t === 'h') { a += it.a; b += it.b; }
+      else if (it.t === 'c') resumed = it.teams;
+      else if (it.t === 'e') { a = 0; b = 0; resumed = null; wins[it.w] += 1; }
+    });
+    return { A: a, B: b, resumed: resumed, wins: wins };
+  }
+  function asking(g) { return !g.resumed && (g.A >= TARGET || g.B >= TARGET) && g.A !== g.B; }
+  function lastHand() {
+    for (var i = S.log.length - 1; i >= 0; i--) if (S.log[i].t === 'h') return S.log[i];
+    return null;
+  }
+  function draftEmpty() { return cur.A === '' && cur.B === '' && !capot; }
+
+  function winsRow(w) { return '<div class="r w"><div class="c">' + w.A + '</div><div class="c">' + w.B + '</div></div>'; }
+  function side(prev, x) { return '<div class="c"><span class="p">' + prev + '</span><span class="d">–</span><span class="x">' + x + '</span></div>'; }
+  function cell(s, total) {
+    return '<button type="button" class="c act' + (foc === s ? ' on' : '') + '" data-s="' + s + '">' +
+      '<span class="p">' + total + '</span><span class="d">–</span><span class="x n">' + show(cur[s]) + '</span></button>';
+  }
+
+  function render() {
+    var w = { A: 0, B: 0 }, a = 0, b = 0, h = winsRow(w);
+    S.log.forEach(function (it) {
+      if (it.t === 'h') { h += '<div class="r">' + (it.cp ? CP : '') + side(a, it.a) + side(b, it.b) + '</div>'; a += it.a; b += it.b; }
+      else if (it.t === 'e') {
+        h += '<div class="r f"><div class="c">' + a + '</div><div class="c">' + b + '</div></div>';
+        w[it.w] += 1; h += winsRow(w); a = 0; b = 0;
+      }
+    });
+    var g = game(), ask = asking(g);
+    if (!ask) h += '<div class="r">' + (capot ? CP : '') + cell('A', a) + cell('B', b) + '</div>';
+    var list = $('list');
+    list.innerHTML = h;
+    list.scrollTop = list.scrollHeight;
+
+    $('ask').hidden = !ask;
+    $('pad').hidden = ask;
+    $('cap').hidden = !g.resumed || ask;
+    if (ask) {
+      var aw = g.A > g.B;
+      $('askScore').innerHTML = (aw ? '<b>' + g.A + '</b>' : g.A) + ' : ' + (aw ? g.B : '<b>' + g.B + '</b>');
+    }
+    $('cap').setAttribute('aria-pressed', String(capot));
+    $('undo').disabled = S.log.length === 0 && draftEmpty();
+    $('reset').disabled = S.log.length === 0 && draftEmpty();
+    var ent = $('ent'), saving = foc === 'B';
+    ent.classList.toggle('save', saving);
+    ent.setAttribute('aria-label', saving ? 'Запиши ръката' : 'Към Вие');
+  }
+
+  function renderHistory() {
+    var h = '';
+    for (var i = S.history.length - 1; i >= 0; i--) {
+      var g = S.history[i], aw = g.w === 'A';
+      h += '<div class="li"><span class="t">' + fmt(g.ts) + '</span><span class="v">' +
+        (aw ? '<b>' + g.a + '</b>' : g.a) + ' : ' + (aw ? g.b : '<b>' + g.b + '</b>') + '</span></div>';
+    }
+    $('histList').innerHTML = h;
+    $('histEmpty').hidden = S.history.length > 0;
+    $('histClear').hidden = S.history.length === 0;
+  }
+
+  /* ---------- views ---------- */
+  var armTimer = null, resetHTML = $('reset').innerHTML, hcTimer = null;
+  function disarmReset() {
+    clearTimeout(armTimer);
+    var b = $('reset'); b.classList.remove('armed'); b.innerHTML = resetHTML;
+  }
+  function disarmClear() {
+    clearTimeout(hcTimer);
+    var b = $('histClear'); b.classList.remove('armed'); b.textContent = 'Изчисти историята';
+  }
+  function setView(v) {
+    view = v; disarmReset(); disarmClear();
+    $('gameView').hidden = v !== 'game';
+    $('infoView').hidden = v !== 'info';
+    $('histView').hidden = v !== 'hist';
+    $('tt').hidden = v === 'game';
+    $('undo').hidden = v !== 'game';
+    $('reset').hidden = v !== 'game';
+    $('btnInfo').setAttribute('aria-pressed', String(v === 'info'));
+    $('btnHist').setAttribute('aria-pressed', String(v === 'hist'));
+    $('ttl').textContent = v === 'info' ? 'Инфо' : v === 'hist' ? 'История' : '';
+    if (v === 'game') render();
+    else if (v === 'hist') { renderHistory(); $('histView').scrollTop = 0; }
+    else $('infoView').scrollTop = 0;
+  }
+  $('btnInfo').addEventListener('click', function () { setView(view === 'info' ? 'game' : 'info'); });
+  $('btnHist').addEventListener('click', function () { setView(view === 'hist' ? 'game' : 'hist'); });
+  $('back').addEventListener('click', function () { setView('game'); });
+
+  $('reset').addEventListener('click', function () {
+    var b = $('reset');
+    if (b.classList.contains('armed')) {
+      disarmReset();
+      S.log = []; cur = { A: '', B: '' }; foc = 'A'; capot = false; save(); render();
+    } else {
+      b.classList.add('armed'); b.textContent = 'Изтрий?';
+      armTimer = setTimeout(disarmReset, 3500);
+    }
+  });
+  $('histClear').addEventListener('click', function () {
+    var b = $('histClear');
+    if (b.classList.contains('armed')) {
+      disarmClear(); S.history = []; save(); renderHistory();
+    } else {
+      b.classList.add('armed'); b.textContent = 'Сигурен ли си? Натисни пак';
+      hcTimer = setTimeout(disarmClear, 3500);
+    }
+  });
+
+  /* ---------- game ---------- */
+  function endGame(auto) {
+    var g = game(), w = g.A > g.B ? 'A' : 'B', ts = Date.now();
+    S.log.push({ t: 'e', w: w, ts: ts, auto: auto ? 1 : 0 });
+    S.history.push({ ts: ts, a: g.A, b: g.B, w: w });
+  }
+
+  function press(k) {
+    var t = cur[foc];
+    if (k.length === 1 && k >= '0' && k <= '9') {
+      if (t === '0') t = k; else if (t.length < 4) t += k;
+    } else if (k === 'bs') {
+      t = t.slice(0, -1);
+    } else if (k === 'ent') {
+      if (foc === 'A') { foc = 'B'; render(); return; }
+      commit(); return;
+    }
+    cur[foc] = t; render();
+  }
+
+  function commit() {
+    if (cur.A === '' && cur.B === '') return;
+    var a = num(cur.A), b = num(cur.B);
+    S.log.push({ t: 'h', a: a, b: b, cp: capot ? 1 : 0 });
+    var g = game();
+    /* After a capot the game was resumed: the next non-capot hand ends it
+       if a team that was already above 151 scores in it. Higher total wins. */
+    if (g.resumed && !capot && g.A !== g.B) {
+      var scored = g.resumed.some(function (t) { return (t === 'A' ? a : b) > 0; });
+      if (scored) endGame(true);
+    }
+    cur = { A: '', B: '' }; foc = 'A'; capot = false; save(); render();
+  }
+
+  /* Undo one step at a time: the last number typed goes first. */
+  function undo() {
+    disarmReset();
+    if (cur.B !== '') { cur.B = ''; foc = 'B'; render(); return; }
+    if (cur.A !== '') { cur.A = ''; foc = 'A'; render(); return; }
+    if (capot) { capot = false; render(); return; }
+    var last = S.log[S.log.length - 1];
+    if (!last) return;
+    if (last.t === 'c') {
+      S.log.pop(); var lh = lastHand(); if (lh) lh.cp = last.prevCp || 0;
+      save(); render(); return;
+    }
+    if (last.t === 'e') {
+      S.log.pop();
+      S.history = S.history.filter(function (g) { return g.ts !== last.ts; });
+      if (!last.auto) { save(); render(); return; }   /* back to the 151 question */
+    }
+    var h = S.log.pop();
+    if (h && h.t === 'h') {
+      cur = { A: String(h.a), B: '' }; foc = 'B';
+      capot = !!(h.cp && game().resumed);
+    }
+    save(); render();
+  }
+
+  $('askNew').addEventListener('click', function () { endGame(false); save(); render(); });
+  $('askCap').addEventListener('click', function () {
+    var g = game(), h = lastHand();
+    if (!h) return;
+    var teams = [];
+    if (g.A >= TARGET) teams.push('A');
+    if (g.B >= TARGET) teams.push('B');
+    S.log.push({ t: 'c', teams: teams, prevCp: h.cp ? 1 : 0 });
+    h.cp = 1; capot = false; save(); render();
+  });
+  $('cap').addEventListener('click', function () { capot = !capot; render(); });
+
+  $('pad').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-k]'); if (b) press(b.getAttribute('data-k'));
+  });
+  $('list').addEventListener('click', function (e) {
+    var c = e.target.closest('[data-s]'); if (c) { foc = c.getAttribute('data-s'); render(); }
+  });
+  $('undo').addEventListener('click', undo);
+
+  render();
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+}
+</script>
+</body>
+</html>
