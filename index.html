@@ -144,16 +144,15 @@ button.c.act.on { background: color-mix(in srgb, var(--accent) 10%, var(--card))
 .swrow[aria-pressed="true"] .sw::after { transform: translateX(20px); }
 @media (prefers-reduced-motion: reduce) { .sw, .sw::after { transition: none; } }
 
-.pad { display: grid; grid-template-columns: repeat(3, 1fr) 1.1fr; grid-template-rows: repeat(4, 48px); gap: 8px; }
+.pad { display: grid; grid-template-columns: repeat(5, 1fr) 1.5fr; grid-template-rows: repeat(2, 54px); gap: 8px; }
 .k {
-  border: 0; border-radius: 24px; background: var(--key); color: var(--key-ink); cursor: pointer;
+  border: 0; border-radius: 27px; background: var(--key); color: var(--key-ink); cursor: pointer;
   font: 500 22px/1 var(--font); display: grid; place-items: center;
 }
 .k:active { filter: brightness(.9); }
 .k svg { width: 22px; height: 22px; }
-.k.zero { grid-column: 1 / span 3; }
-.k.bs { grid-column: 4; grid-row: 1; }
-.k.enter { grid-column: 4; grid-row: 2 / span 3; background: var(--accent); color: var(--on-accent); }
+.k.bs { grid-column: 6; grid-row: 1; }
+.k.enter { grid-column: 6; grid-row: 2; background: var(--accent); color: var(--on-accent); }
 .k.enter svg { width: 28px; height: 28px; }
 .k.enter .ic-save { display: none; }
 .k.enter.save .ic-save { display: block; }
@@ -251,7 +250,7 @@ button.c.act.on { background: color-mix(in srgb, var(--accent) 10%, var(--card))
         <button class="k" type="button" data-k="7">7</button>
         <button class="k" type="button" data-k="8">8</button>
         <button class="k" type="button" data-k="9">9</button>
-        <button class="k zero" type="button" data-k="0">0</button>
+        <button class="k" type="button" data-k="0">0</button>
       </div>
     </div>
   </section>
