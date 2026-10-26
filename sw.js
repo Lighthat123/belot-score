@@ -1,5 +1,5 @@
-const CACHE = 'belote-v4';
-const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable.png'];
+const CACHE = 'belote-v5';
+const FILES = ['./', 'index.html', 'manifest.webmanifest', 'suits-192.png', 'suits-512.png', 'suits-maskable.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)));
